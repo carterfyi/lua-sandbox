@@ -28,5 +28,4 @@ function tryFunc(f, fname, ...)
   end
 end
 
-envprint = function () for key, val in pairs(_ENV) do print(tostring(key) .. ": " .. tostring(val)) end end
-envprint()
+function envprint() for key, val in pairs(_ENV) do print(tostring(key) .. ": " .. tostring(val)) end end
