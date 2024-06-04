@@ -496,12 +496,12 @@ end
   C: how do I programatically get the name of a function f as a string?
   CP: you can use debug.getinfo(f).name
   C: why is the value of debug.getinfo(f).name seemingly always nil?
-  because the function f is an anonymous function
-  if I pass a named function to try, will the value of debug.getinfo(f).name be the name of the function?
-  is fy a named function?
-  yes
-  so if I pass fy to try, will the value of debug.getinfo(f).name when called within try be 'fy'?
-  yes
+  CP because the function f is an anonymous function
+  C: if I pass a named function to try, will the value of debug.getinfo(f).name be the name of the function?
+  C: is fy a named function?
+  CP: yes
+  C: so if I pass fy to try, will the value of debug.getinfo(f).name when called within try be 'fy'?
+  CP: yes
   C: So I think that's what's supposed to happen in theory, but in practice, the value of debug.getinfo(f).name is seemingly always nil
   CP: okay
   C: See: stackoverflow.com/q/18499086/
@@ -512,7 +512,7 @@ end
 --- @param fname string: The name of the function (optional).
 --- @param ... any: The arguments to pass to the function.
 --- @return any: The result of the function if it was successful, false if the function threw an error.
-function try(f, fname, ...)
+function tryFunc(f, fname, ...)
   args = {...}
   argstr =  (function(args)
     local str = ''
@@ -537,16 +537,26 @@ function try(f, fname, ...)
   end
 end
 
-try(fy, "fy", 2)
-try(fy, "fy", 2, 3)
-
-
+tryFunc(fy, "fy", 2)
+tryFunc(fy, "fy", 2, 3)
 
 
 -- And so are these:
 local function g(x) return math.sin(x) end
 local g; g = function(x) return math.sin(x) end
+
 -- the 'local g' decl makes g-self-references ok.
+-- -- This will work
+-- local function f1(x) if x > 0 then return f1(x - 1) else return x end end
+-- print(f1(5))  -- prints 0
+
+-- -- This will work
+-- local f2; f2 = function(x) if x > 0 then return f2(x - 1) else return x end end
+-- print(f2(5))  -- prints 0
+
+-- -- This will not work
+-- local f3 = function(x) if x > 0 then return f3(x - 1) else return x end end
+-- print(f3(5))  -- error: attempt to call a nil value (global 'f3')
 
 -- Trig funcs work in radians, by the way.
 
@@ -567,11 +577,14 @@ print 'hello' -- Works fine.
 
 -- Dict literals have string keys by default:
 t = { key1 = 'value1', key2 = false }
+-- js equivalent: const t = { key1: 'value1', key2: false }
 
 -- String keys can use js-like dot notation:
 print(t.key1) -- Prints 'value1'.
 t.newKey = {} -- Adds a new key/value pair.
 t.key2 = nil  -- Removes key2 from the table.
+t[3] = 'value3'
+print(t[3])
 
 -- Literal notation for any (non-nil) value as key:
 u = { ['@!#'] = 'qbert', [{}] = 1729, [6.28] = 'tau' }
@@ -586,17 +599,26 @@ b = u[{}]    -- We might expect 1729, but it's nil:
 -- as the one used to store the original value. So
 -- strings & numbers are more portable keys.
 
+-- C: so when would you not want to use strings or numbers as keys?
+-- CP: when you want to use a table as a key
+-- C: what might be a good use case for using a table as a key?
+-- CP: when you want to use a table as a key
+-- C: ...let's move on
+
 -- A one-table-param function call needs no parens:
 function h(x) print(x.key1) end
 
 h { key1 = 'Sonmi~451' }    -- Prints 'Sonmi~451'.
 
+-- pairs(u) -- Returns key-value pairs.
 for key, val in pairs(u) do -- Table iteration.
   print(key, val)
 end
 
 -- _G is a special table of all globals.
 print(_G['_G'] == _G) -- Prints 'true'.
+-- C: is that a circular reference?
+-- CP: yes
 
 -- Using tables as lists / arrays:
 
@@ -605,6 +627,7 @@ v = { 'value1', 'value2', 1.21, 'gigawatts' }
 for i = 1, #v do -- #v is the size of v for lists.
   print(v[i])    -- Indices start at 1 !! SO CRAZY!
 end
+
 -- A 'list' is not a real type. v is just a table
 -- with consecutive integer keys, treated as a list.
 
@@ -625,15 +648,18 @@ f2 = { a = 2, b = 3 }
 metafraction = {}
 function metafraction.__add(f1, f2)
   sum = {}
-  sum.b = f1.b * f2.b
-  sum.a = f1.a * f2.b + f2.a * f1.b
+  sum.b = f1.b * f2.b -- new denominator is product of denominators
+  sum.a = f1.a * f2.b + f2.a * f1.b -- cross multiply
   return sum
 end
 
+-- C: can this also be written as metafraction.__add = function(f1, f2) ... end?
+-- CP: yes
 setmetatable(f1, metafraction)
 setmetatable(f2, metafraction)
 
 s = f1 + f2 -- call __add(f1, f2) on f1's metatable
+-- s is now { a = 7, b = 6 }, that is (7/6 = 1/2 + 2/3)
 
 -- f1, f2 have no key for their metatable, unlike
 -- prototypes in js, so you must retrieve it as in
@@ -645,7 +671,7 @@ s = f1 + f2 -- call __add(f1, f2) on f1's metatable
 -- Class-like patterns given below would fix this.
 
 -- An __index on a metatable overloads dot lookups:
-defaultFavs = { animal = 'gru', food = 'donuts' }
+defaultFavs = { animal = 'gnu', food = 'donuts' }
 myFavs = { food = 'pizza' }
 setmetatable(myFavs, { __index = defaultFavs })
 eatenBy = myFavs.animal -- works! thanks, metatable
@@ -704,7 +730,7 @@ mrDog:makeSound() -- 'I say woof'         -- 8.
 --    function tablename.fn(self, ...)
 --    The : just adds a first arg called self.
 --    Read 7 & 8 below for how self gets its value.
--- 3. newObj will be an instance of class Dog.
+-- 3. newObj will be an instance of 'class' Dog.
 -- 4. self = the class being instantiated. Often
 --    self = Dog, but inheritance can change it.
 --    newObj gets self's functions when we set both
@@ -772,7 +798,14 @@ return M
 
 -- Another file can use mod.lua's functionality:
 local mod = require('mod')  -- Run the file mod.lua.
+--]]
+local helpers = loadfile('./helpers.lua')
+if helpers then
+  helpers = helpers()
+  helpers.tryFunc(fy, "fy", 2)
+end
 
+--[[
 -- require is the standard way to include modules.
 -- require acts like:     (if not cached; see below)
 local mod = (function ()
@@ -804,6 +837,10 @@ f = loadfile('mod2')  -- Calling f() runs mod2.lua.
 -- loadstring is loadfile for strings.
 g = loadstring('print(343)')  -- Returns a function.
 g()  -- Prints out 343; nothing printed before now.
+
+C: what is the difference between loadfile and loadstring?
+CP: loadfile loads a lua file but doesn't run it yet. loadstring is loadfile for strings.
+C: Can you be more specific?
 
 --]]
 
